@@ -58,18 +58,36 @@ class API
 			}
 		}
 
-		if (array_key_exists('hmac', $da))
+		$use_hmac = false;
+
+		if (array_key_exists('hmac', $da)) {
+			$hmac = $da['hmac'];
+			unset($da['hmac']);
+			$use_hmac = true;
+		}
+		$signature = $da['signature'];
+
+		unset($da['signature']);
+		ksort($da);
+		$queryItems = [];
+		foreach($da as $key => $value) {
+			list($key, $value) = str_replace('%','%25',[$key,$value]);
+			list($key, $value) = str_replace('&','%26',[$key,$value]);
+			$key = str_replace('=','%3D',$key);
+			$queryItems[] = $key.'='.$value;
+		}
+		$queryString = implode('&',$queryItems);
+
+		if ($use_hmac)
 		{
 			// HMAC Validation
-			$queryString = http_build_query(array('code' => $da['code'], 'shop' => $da['shop'], 'timestamp' => $da['timestamp']));
-			$match = $da['hmac'];
+			$match = $hmac;
 			$calculated = hash_hmac('sha256', $queryString, $this->_API['API_SECRET']);
 		}
 		else
 		{
 			// MD5 Validation, to be removed June 1st, 2015
-			$queryString = http_build_query(array('code' => $da['code'], 'shop' => $da['shop'], 'timestamp' => $da['timestamp']), NULL, '');
-			$match = $da['signature'];
+			$match = $signature;
 			$calculated = md5($this->_API['API_SECRET'] . $queryString);
 		}
 
